@@ -33,7 +33,7 @@ func main() {
 		log.Fatalf("Unable to connect to database %v: %v", connectionString, err)
 	}
 
-	tableFields, err := prober.QueryTableFields(tableName)
+	tableFields, err := prober.QueryFields(tableName)
 	if err != nil {
 		log.Fatalf("Unable to query table fields: %v", errors.Cause(err))
 	}

@@ -3,6 +3,14 @@ package pqprobe
 import "github.com/lib/pq/oid"
 
 type (
+	// Relation describes relation within database.
+	Relation struct {
+		Schema string `db:"schema"`
+		Name   string `db:"name"`
+		Type   string `db:"type"`
+		Owner  string `db:"owner"`
+	}
+
 	// tableRelation contains table's oid.
 	tableRelation struct {
 		OID        int64  `db:"oid"`
@@ -10,8 +18,8 @@ type (
 		TableName  string `db:"relname"`
 	}
 
-	// FieldProps contains table's fields properties.
-	FieldProps struct {
+	// Field contains table's fields properties.
+	Field struct {
 		FieldNumber     int64  `db:"attnum"`
 		TypeID          uint32 `db:"atttypid"`
 		FieldName       string `db:"attname"`
@@ -26,13 +34,13 @@ type (
 
 // Name returns field info in camelcase.
 // Useful for struct field name.
-func (t FieldProps) Name() string {
+func (t Field) Name() string {
 	return camelify(variableNameRule(t.FieldName))
 }
 
 // GoTypeString returns this field's type as equivalent Golang type.
 // Useful for struct field type.
 // See https://godoc.org/github.com/lib/pq#hdr-Data_Types for conventions.
-func (t FieldProps) GoTypeString() string {
+func (t Field) GoTypeString() string {
 	return typeString(oid.Oid(t.TypeID))
 }
