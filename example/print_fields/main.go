@@ -33,17 +33,17 @@ func main() {
 		log.Fatalf("Unable to connect to database %v: %v", connectionString, err)
 	}
 
-	tableFields, err := prober.QueryFields(tableName)
+	table, err := prober.QueryTable(tableName)
 	if err != nil {
 		log.Fatalf("Unable to query table fields: %v", errors.Cause(err))
 	}
 
-	for _, v := range tableFields {
+	for _, v := range table.Fields {
 		tag := ""
 		if v.IsPrimary {
 			tag = fmt.Sprintf(" [PrimaryKey] %v", v.IndexDefinition)
 		}
-		log.Printf("%v %v `db:\"%v\"`%v\n", v.Name(), v.GoTypeString(), v.FieldName, tag)
+		log.Printf("%v %v `db:\"%v\"`%v\n", v.GoName(), v.GoTypeString(), v.Name, tag)
 	}
 
 	return

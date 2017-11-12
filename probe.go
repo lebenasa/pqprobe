@@ -1,3 +1,4 @@
+// Package pqprobe is a library to retrieve relations data from a Postgres database.
 package pqprobe
 
 import (
@@ -11,7 +12,7 @@ type (
 	// Prober is an interface to table & fields discovery functions.
 	Prober interface {
 		QueryRelations() (relations []Relation, err error)
-		QueryFields(tableName string) (fields []Field, err error)
+		QueryTable(tableName string) (table Table, err error)
 	}
 
 	// pqProber enables table & fields discovery for postgresql database.
@@ -23,9 +24,14 @@ type (
 	}
 )
 
+var (
+	// ErrUnsupportedDriver means the SQL driver is not supported yet.
+	ErrUnsupportedDriver = errors.New("unsupported driver")
+)
+
 // Open wraps sqlx.Open to return a Prober.
-// Will return error if Prober implementation for given driver is not yet implemented.
-// Currently supported driver:
+// Will return UnsupportedDriver error if Prober implementation for given driver is not yet implemented.
+// Supported driver:
 // 	- postgres
 func Open(driverName, dataSourceName string) (prober Prober, err error) {
 	db, err := sqlx.Open(driverName, dataSourceName)
@@ -38,7 +44,7 @@ func Open(driverName, dataSourceName string) (prober Prober, err error) {
 		return NewPqProber(db)
 	}
 
-	return nil, errors.New("unsupported driver")
+	return nil, ErrUnsupportedDriver
 }
 
 // NewPqProber wraps given postgresql database into Prober to discover its table & fields information.
@@ -125,17 +131,17 @@ func (p pqProber) QueryRelations() (relations []Relation, err error) {
 	return
 }
 
-// QueryFields probes the database for given table name and returns its fields' properties.
-func (p pqProber) QueryFields(tableName string) (fields []Field, err error) {
+// QueryTable probes the database for given table name and returns its fields' properties.
+func (p pqProber) QueryTable(tableName string) (table Table, err error) {
 	rel := tableRelation{}
 	err = p.selectTableRelation.QueryRowx(fmt.Sprintf("^(%v)$", tableName)).StructScan(&rel)
 	if err != nil {
-		return nil, errors.Wrapf(err, "table %v probe failed", tableName)
+		return table, errors.Wrapf(err, "table %v probe failed", tableName)
 	}
 
 	fieldRows, err := p.selectFieldProps.Queryx(rel.OID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "fields probe failed for table %v", tableName)
+		return table, errors.Wrapf(err, "fields probe failed for table %v", tableName)
 	}
 	defer fieldRows.Close()
 
@@ -143,10 +149,14 @@ func (p pqProber) QueryFields(tableName string) (fields []Field, err error) {
 		ti := Field{}
 		err = fieldRows.StructScan(&ti)
 		if err != nil {
-			return nil, errors.Wrapf(err, "struct scan failed on probe for table %v", tableName)
+			return table, errors.Wrapf(err, "struct scan failed on probe for table %v", tableName)
 		}
-		fields = append(fields, ti)
+		table.Fields = append(table.Fields, ti)
+		if ti.IsPrimary {
+			table.PrimaryKeys = append(table.PrimaryKeys, ti)
+		}
 	}
+	table.Name = tableName
 
 	return
 }
