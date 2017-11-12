@@ -30,7 +30,8 @@ var (
 )
 
 // Open wraps sqlx.Open to return a Prober.
-// Will return UnsupportedDriver error if Prober implementation for given driver is not yet implemented.
+// Will return ErrUnsupportedDriver if there is no Prober implementation for given driver.
+//
 // Supported driver:
 // 	- postgres
 func Open(driverName, dataSourceName string) (prober Prober, err error) {
