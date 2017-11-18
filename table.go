@@ -18,9 +18,10 @@ type (
 
 	// Table contains Posgres table information.
 	Table struct {
-		Name        string
-		Fields      []Field
-		PrimaryKeys []Field
+		Name           string
+		Fields         []Field
+		PrimaryKeys    []Field
+		NonPrimaryKeys []Field
 	}
 )
 

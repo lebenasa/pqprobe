@@ -155,6 +155,8 @@ func (p pqProber) QueryTable(tableName string) (table Table, err error) {
 		table.Fields = append(table.Fields, ti)
 		if ti.IsPrimary {
 			table.PrimaryKeys = append(table.PrimaryKeys, ti)
+		} else {
+			table.NonPrimaryKeys = append(table.NonPrimaryKeys, ti)
 		}
 	}
 	table.Name = tableName
