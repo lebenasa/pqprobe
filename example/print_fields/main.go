@@ -13,6 +13,7 @@ import (
 
 func usage() {
 	fmt.Println("Usage: print_fields [database connection string] [table name]")
+	fmt.Println("Example: print_fields  postgres://user:pass@host/database musics")
 	flag.PrintDefaults()
 }
 
