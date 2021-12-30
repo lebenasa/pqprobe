@@ -1,5 +1,5 @@
 // Package pqprobe is a library to retrieve relations data from a Postgres database.
-package pqprobe
+package internal
 
 import (
 	"fmt"

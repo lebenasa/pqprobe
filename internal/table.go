@@ -1,4 +1,4 @@
-package pqprobe
+package internal
 
 type (
 	// Relation describes relation within database.

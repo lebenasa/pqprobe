@@ -1,4 +1,4 @@
-package pqprobe
+package internal
 
 import "github.com/lib/pq/oid"
 
