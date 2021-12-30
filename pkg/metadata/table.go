@@ -1,4 +1,6 @@
-package internal
+package metadata
+
+import "pqprobe/pkg/metadata/internal"
 
 type (
 	// Relation describes relation within database.
@@ -9,14 +11,7 @@ type (
 		Owner  string `db:"owner"`
 	}
 
-	// tableRelation contains table's oid.
-	tableRelation struct {
-		OID        int64  `db:"oid"`
-		SchemaName string `db:"nspname"`
-		TableName  string `db:"relname"`
-	}
-
-	// Table contains Posgres table information.
+	// Table contains Postgres table information.
 	Table struct {
 		Name           string
 		Fields         []Field
@@ -28,5 +23,5 @@ type (
 // GoName returns table name in camelcase.
 // Useful for struct field name.
 func (t Table) GoName() string {
-	return camelify(variableNameRule(t.Name))
+	return internal.Camelify(internal.VariableNameRule(t.Name))
 }

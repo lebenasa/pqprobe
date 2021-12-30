@@ -15,7 +15,7 @@ func init() {
 	variableNameRuleRegexp = regexp.MustCompile(`(?i)(\?|(sql)|(id)|(uri)|(url))`)
 }
 
-func typeString(typ oid.Oid) string {
+func TypeString(typ oid.Oid) string {
 	switch typ {
 	case oid.T_char, oid.T_varchar, oid.T_text:
 		return "string"
@@ -40,13 +40,13 @@ func typeString(typ oid.Oid) string {
 	return "[]byte"
 }
 
-func variableNameRule(in string) (out string) {
+func VariableNameRule(in string) (out string) {
 	return variableNameRuleRegexp.ReplaceAllStringFunc(in, func(w string) string {
 		return strings.ToUpper(w)
 	})
 }
 
-func camelify(in string) (out string) {
+func Camelify(in string) (out string) {
 	phrase := strings.Split(in, "_")
 	for i, v := range phrase {
 		phrase[i] = strings.Join([]string{strings.ToUpper(string(v[0])), string(v[1:])}, "")

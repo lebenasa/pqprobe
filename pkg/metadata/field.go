@@ -1,6 +1,9 @@
-package internal
+package metadata
 
-import "github.com/lib/pq/oid"
+import (
+	"github.com/lib/pq/oid"
+	"pqprobe/pkg/metadata/internal"
+)
 
 type (
 	// Field contains table's fields properties.
@@ -20,12 +23,12 @@ type (
 // GoName returns field info in camelcase.
 // Useful for struct field name.
 func (t Field) GoName() string {
-	return camelify(variableNameRule(t.Name))
+	return internal.Camelify(internal.VariableNameRule(t.Name))
 }
 
 // GoTypeString returns this field's type as equivalent Golang type.
 // Useful for struct field type.
 // See https://godoc.org/github.com/lib/pq#hdr-Data_Types for conventions.
 func (t Field) GoTypeString() string {
-	return typeString(oid.Oid(t.TypeID))
+	return internal.TypeString(oid.Oid(t.TypeID))
 }

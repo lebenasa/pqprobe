@@ -1,8 +1,8 @@
-// Package pqprobe is a library to retrieve relations data from a Postgres database.
 package internal
 
 import (
 	"fmt"
+	"pqprobe/pkg/metadata"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -11,8 +11,8 @@ import (
 type (
 	// Prober is an interface to table & fields discovery functions.
 	Prober interface {
-		QueryRelations() (relations []Relation, err error)
-		QueryTable(tableName string) (table Table, err error)
+		QueryRelations() (relations []metadata.Relation, err error)
+		QueryTable(tableName string) (table metadata.Table, err error)
 	}
 
 	// pqProber enables table & fields discovery for postgresql database.
@@ -21,6 +21,13 @@ type (
 		selectRelations     *sqlx.Stmt
 		selectTableRelation *sqlx.Stmt
 		selectFieldProps    *sqlx.Stmt
+	}
+
+	// tableRelation contains table's oid.
+	tableRelation struct {
+		OID        int64  `db:"oid"`
+		SchemaName string `db:"nspname"`
+		TableName  string `db:"relname"`
 	}
 )
 
@@ -113,7 +120,7 @@ func NewPqProber(db *sqlx.DB) (prober Prober, err error) {
 }
 
 // QueryRelations probes the database for all relations within it.
-func (p pqProber) QueryRelations() (relations []Relation, err error) {
+func (p pqProber) QueryRelations() (relations []metadata.Relation, err error) {
 	relationRows, err := p.selectRelations.Queryx()
 	if err != nil {
 		return nil, errors.Wrap(err, "relation probe failed")
@@ -121,7 +128,7 @@ func (p pqProber) QueryRelations() (relations []Relation, err error) {
 	defer relationRows.Close()
 
 	for relationRows.Next() {
-		r := Relation{}
+		r := metadata.Relation{}
 		err = relationRows.StructScan(&r)
 		if err != nil {
 			return nil, errors.Wrap(err, "struct scan failed on relation probe")
@@ -133,7 +140,7 @@ func (p pqProber) QueryRelations() (relations []Relation, err error) {
 }
 
 // QueryTable probes the database for given table name and returns its fields' properties.
-func (p pqProber) QueryTable(tableName string) (table Table, err error) {
+func (p pqProber) QueryTable(tableName string) (table metadata.Table, err error) {
 	rel := tableRelation{}
 	err = p.selectTableRelation.QueryRowx(fmt.Sprintf("^(%v)$", tableName)).StructScan(&rel)
 	if err != nil {
@@ -147,7 +154,7 @@ func (p pqProber) QueryTable(tableName string) (table Table, err error) {
 	defer fieldRows.Close()
 
 	for fieldRows.Next() {
-		ti := Field{}
+		ti := metadata.Field{}
 		err = fieldRows.StructScan(&ti)
 		if err != nil {
 			return table, errors.Wrapf(err, "struct scan failed on probe for table %v", tableName)
