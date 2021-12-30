@@ -1,0 +1,128 @@
+// Package {{ .PackageName }} is model code to table {{ .Table.Name }} in database.
+package {{ .PackageName }}
+
+{{ $lenFields := len .Table.Fields }}
+{{ $lenPK := len .Table.PrimaryKeys }}
+{{ $lenNonPK := len .Table.NonPrimaryKeys }}
+import (
+	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
+)
+
+type (
+	// Table is interface to table {{ .Table.Name }}.
+	Table interface {
+		// SelectBy{{ range $i, $field := .Table.PrimaryKeys }}{{ .GoName }}{{ if notAtEnd $i $lenPK}}And{{ end }}{{ end }} on table {{ .Table.Name }}.
+		SelectBy{{ range $i, $field := .Table.PrimaryKeys }}{{ .GoName }}{{ if notAtEnd $i $lenPK}}And{{ end }}{{ end }}({{ range $i, $field := .Table.PrimaryKeys }}{{ .GoName }} {{ .GoTypeString }}{{ if notAtEnd $i $lenPK}},{{ end }}{{ end }}) (Record, error)
+
+		// Insert a new record to table {{ .Table.Name }}.
+		Insert(tx *sqlx.Tx, record Record) (Record, error)
+
+		// Update a record in table {{ .Table.Name }}.
+		Update(tx *sqlx.Tx, record Record) (Record, error)
+	}
+
+	table struct {
+		replication *sqlx.DB
+	}
+
+	// Record of table {{ .Table.Name }}.
+	Record struct {
+	{{ range .Table.Fields }}
+		{{ printf "%s %s `db:\"%s\"`" .GoName .GoTypeString .Name }}
+	{{ end }}
+	}
+)
+
+// Bind replication (read-only) database connection to create a new Table.
+func Bind(replication *sqlx.DB) (t Table, err error) {
+	if replication == nil {
+		return nil, fmt.Errorf("pqprobe: {{ .PackageName }} replication database connection is null")
+	}
+	return table{replication: replication}, nil
+}
+
+func (t table) SelectBy{{ range $i, $field := .Table.PrimaryKeys }}{{ .GoName }}{{ if notAtEnd $i $lenPK}}And{{ end }}{{ end }}({{ range $i, $field := .Table.PrimaryKeys }}{{ .GoName }} {{ .GoTypeString }}{{ if notAtEnd $i $lenPK}},{{ end }}{{ end }}) (r Record, err error) {
+	rec := record{}
+	err = t.replication.Select(&rec, `
+	SELECT
+	{{ range $i, $field := .Table.Fields }}
+		{{ $field.Name }}{{ if notAtEnd $i $lenFields }},{{ end }}
+	{{ end }}
+	FROM
+		{{ .Table.Name }}
+	WHERE
+		{{ range $i, $key := .Table.PrimaryKeys }}
+			{{ $key.Name }} = ${{ add $i 1 }}{{ if notAtEnd $i $lenPK }},{{ end }}
+		{{ end }}
+	`, 
+	{{ range $i, $key := .Table.PrimaryKeys }}
+		{{ $key.GoName }}{{ if notAtEnd $i $lenPK }},{{ end }}{{ end }})
+	if err != nil {
+		return nil, errors.Wrap(err, "{{ .PackageName }}: select error")
+	}
+
+	return rec, nil
+}
+
+func (t table) Insert(tx *sqlx.Tx, data Data) (r Record, err error) {
+	if tx == nil {
+		return nil, errors.New("{{ .PackageName }}: nil tx")
+	}
+	err = tx.QueryRowx(`
+		INSERT INTO
+			{{ .Table.Name }} (
+				{{ range $i, $field := .Table.NonPrimaryKeys }}
+					{{ $field.Name }}{{ if notAtEnd $i $lenNonPK }},{{ end }}
+				{{ end }}
+			)
+		VALUES
+			(
+				{{ range $i, $field := .Table.NonPrimaryKeys }}
+					${{ add $i 1 }}{{ if notAtEnd $i $lenNonPK }},{{ end }}
+				{{ end }}
+			)
+		RETURNING
+			{{ range $i, $field := .Table.Fields }}
+				{{ $field.Name }}{{ if notAtEnd $i $lenFields }},{{ end }}
+			{{ end }}
+		`, 
+		{{ range $i, $field := .Table.NonPrimaryKeys }}
+			data.{{ $field.GoName }}{{ if notAtEnd $i $lenNonPK }},{{ end }}{{ end }}).StructScan(&data)
+	if err != nil {
+		return nil, errors.Wrap(err, "{{ .PackageName }}: insert failed")
+	}
+
+	return record{data: data}, nil
+}
+
+func (r record) Update(tx *sqlx.Tx, data Data) (newRecord Record, err error) {
+	if tx == nil {
+		return nil, errors.New("{{ .PackageName }}: nil tx")
+	}
+
+	_, err = tx.Exec(`
+		UPDATE
+			{{ .Table.Name }}
+		SET
+			{{ range $i, $field := .Table.NonPrimaryKeys }}
+				{{ $field.Name }} = ${{ add $i 1}}{{ if notAtEnd $i $lenNonPK }},{{ end }}
+			{{ end }}
+		WHERE
+		{{ range $i, $key := .Table.PrimaryKeys }}
+			{{ $key.Name }} = ${{ add $lenFields (add $i 1) }}{{ if notAtEnd $i $lenPK }},{{ end }}
+		{{ end }}
+		`, 
+		{{ range $i, $field := .Table.NonPrimaryKeys }}
+			data.{{ $field.GoName }},
+		{{ end }}
+		{{ range $i, $field := .Table.PrimaryKeys }}
+			data.{{ $field.GoName }}{{ if notAtEnd $i $lenPK }},{{ end }}{{ end }})
+	if err != nil {
+		return nil, errors.Wrap(err, "{{ .PackageName }}: update failed")
+	}
+
+	return record{data: data}, nil
+}
